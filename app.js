@@ -8,9 +8,9 @@ const toCurr = document.querySelector(".to select");
 const msg = document.querySelector(".msg");
 
 for (let select of dropdowns) {
-  for (currCode in countryList) {
+  for (let currCode in countryList) {
     let newOption = document.createElement("option");
-    newOption.innerText = currCode;
+    newOption.innerText = countryName[countryList[currCode]] || currCode;
     newOption.value = currCode;
     if (select.name === "from" && currCode === "USD") {
       newOption.selected = "selected";
@@ -27,26 +27,46 @@ for (let select of dropdowns) {
 
 const updateExchangeRate = async () => {
   let amount = document.querySelector(".amount input");
-  let amtVal = amount.value;
-  if (amtVal === "" || amtVal < 1) {
+  let amtVal = parseFloat(amount.value);
+  if (isNaN(amtVal) || amtVal < 1) {
     amtVal = 1;
     amount.value = "1";
   }
   const URL = `${BASE_URL}/${fromCurr.value.toLowerCase()}.json`;
-  let response = await fetch(URL);
-  let data = await response.json();
-  let rate = data[fromCurr.value.toLowerCase()][toCurr.value.toLowerCase()];
-
-  let finalAmount = amtVal * rate;
-  msg.innerText = `${amtVal} ${fromCurr.value} = ${finalAmount} ${toCurr.value}`;
+  try {
+    let response = await fetch(URL);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    let data = await response.json();
+    let fromCurrency = fromCurr.value.toLowerCase();
+    let toCurrency = toCurr.value.toLowerCase();
+    
+    if (!data[fromCurrency] || !data[fromCurrency][toCurrency]) {
+      throw new Error("Exchange rate not found");
+    }
+    
+    let rate = data[fromCurrency][toCurrency];
+    let finalAmount = amtVal * rate;
+    finalAmount = finalAmount.toFixed(2);
+    
+    msg.innerText = `${amtVal} ${[fromCurr.value] || fromCurr.value} = ${finalAmount} ${[toCurr.value] || toCurr.value}`;
+  } catch (error) {
+    msg.innerText = "Error fetching exchange rate. Please try again.";
+    console.error("Error:", error);
+  }
 };
 
 const updateFlag = (element) => {
   let currCode = element.value;
   let countryCode = countryList[currCode];
-  let newSrc = `https://flagsapi.com/${countryCode}/flat/64.png`;
-  let img = element.parentElement.querySelector("img");
-  img.src = newSrc;
+  if (countryCode) {
+    let newSrc = `https://flagsapi.com/${countryCode}/flat/64.png`;
+    let img = element.parentElement.querySelector("img");
+    if (img) {
+      img.src = newSrc;
+    }
+  }
 };
 
 btn.addEventListener("click", (evt) => {
